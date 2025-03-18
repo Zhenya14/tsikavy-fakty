@@ -25,7 +25,7 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        /* Форма для додавання фактів */
+        /* Форма для реєстрації та входу */
         form {
             background: white;
             padding: 15px;
@@ -34,11 +34,11 @@
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             display: flex;
+            flex-direction: column;
             gap: 10px;
         }
 
         input {
-            flex-grow: 1;
             padding: 10px;
             border: 2px solid #007bff;
             border-radius: 5px;
@@ -76,7 +76,6 @@
             text-align: left;
         }
 
-        /* Кнопка видалення */
         .delete-btn {
             position: absolute;
             top: 10px;
@@ -111,17 +110,40 @@
 </head>
 <body>
     <h1>Цікаві факти</h1>
-    <form id="factForm">
+
+    <!-- Форма реєстрації -->
+    <div id="registerForm">
+        <h2>Реєстрація</h2>
+        <form id="registrationForm">
+            <input type="email" id="registerEmail" placeholder="Введіть email" required>
+            <input type="password" id="registerPassword" placeholder="Введіть пароль" required>
+            <button type="submit">Зареєструватися</button>
+        </form>
+    </div>
+
+    <!-- Форма входу -->
+    <div id="loginForm">
+        <h2>Вхід</h2>
+        <form id="loginFormInner">
+            <input type="email" id="loginEmail" placeholder="Введіть email" required>
+            <input type="password" id="loginPassword" placeholder="Введіть пароль" required>
+            <button type="submit">Увійти</button>
+        </form>
+    </div>
+
+    <!-- Форма додавання фактів (з'являється після входу) -->
+    <form id="factForm" style="display:none;">
         <input type="text" id="factInput" placeholder="Введіть цікавий факт..." required>
         <button type="submit">Додати</button>
     </form>
+
     <div id="factList"></div>
 
     <!-- Підключення Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
 
-    <!-- Основний скрипт -->
     <script>
         // Firebase конфігурація
         const firebaseConfig = {
@@ -137,11 +159,51 @@
         // Ініціалізація Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
         document.addEventListener("DOMContentLoaded", () => {
             const factForm = document.getElementById("factForm");
             const factInput = document.getElementById("factInput");
             const factList = document.getElementById("factList");
+            const registerForm = document.getElementById("registrationForm");
+            const loginForm = document.getElementById("loginFormInner");
+            const registerEmail = document.getElementById("registerEmail");
+            const registerPassword = document.getElementById("registerPassword");
+            const loginEmail = document.getElementById("loginEmail");
+            const loginPassword = document.getElementById("loginPassword");
+
+            // Обробка реєстрації
+            registerForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const email = registerEmail.value;
+                const password = registerPassword.value;
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        console.log("Користувач зареєстрований:", userCredential.user);
+                        registerForm.reset();
+                    })
+                    .catch((error) => {
+                        console.error("Помилка реєстрації:", error);
+                    });
+            });
+
+            // Обробка входу
+            loginForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const email = loginEmail.value;
+                const password = loginPassword.value;
+                auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        console.log("Користувач увійшов:", userCredential.user);
+                        // Показуємо форму для додавання фактів
+                        document.getElementById("factForm").style.display = "block";
+                        document.getElementById("registerForm").style.display = "none";
+                        document.getElementById("loginForm").style.display = "none";
+                    })
+                    .catch((error) => {
+                        console.error("Помилка входу:", error);
+                    });
+            });
 
             // Додавання факту в Firestore
             factForm.addEventListener("submit", (e) => {
