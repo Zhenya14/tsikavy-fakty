@@ -139,12 +139,12 @@
 
     <div id="factList"></div>
 
-    <!-- Підключення Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+    <!-- Підключення Firebase SDK через модулі -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    <script>
         // Firebase конфігурація
         const firebaseConfig = {
             apiKey: "AIzaSyBkPYP3bnDy61NFjRSboRZrfTVNTdIMWbY",
@@ -157,9 +157,9 @@
         };
 
         // Ініціалізація Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
         document.addEventListener("DOMContentLoaded", () => {
             const factForm = document.getElementById("factForm");
@@ -177,7 +177,7 @@
                 e.preventDefault();
                 const email = registerEmail.value;
                 const password = registerPassword.value;
-                auth.createUserWithEmailAndPassword(email, password)
+                createUserWithEmailAndPassword(auth, email, password)
                     .then((userCredential) => {
                         console.log("Користувач зареєстрований:", userCredential.user);
                         registerForm.reset();
@@ -192,7 +192,7 @@
                 e.preventDefault();
                 const email = loginEmail.value;
                 const password = loginPassword.value;
-                auth.signInWithEmailAndPassword(email, password)
+                signInWithEmailAndPassword(auth, email, password)
                     .then((userCredential) => {
                         console.log("Користувач увійшов:", userCredential.user);
                         // Показуємо форму для додавання фактів
@@ -211,9 +211,9 @@
                 const factText = factInput.value.trim();
 
                 if (factText) {
-                    db.collection("facts").add({
+                    addDoc(collection(db, "facts"), {
                         text: factText,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        timestamp: new Date()
                     }).then(() => {
                         factInput.value = ""; // Очищаємо поле після додавання
                     }).catch(error => console.error("Помилка:", error));
@@ -222,9 +222,10 @@
 
             // Завантаження фактів
             function loadFacts() {
-                db.collection("facts").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+                const q = query(collection(db, "facts"), orderBy("timestamp", "desc"));
+                onSnapshot(q, (snapshot) => {
                     factList.innerHTML = ""; // Очищаємо список перед додаванням нових фактів
-                    snapshot.forEach(doc => {
+                    snapshot.forEach((doc) => {
                         const factData = doc.data();
                         const factElement = document.createElement("div");
                         factElement.classList.add("fact");
@@ -236,10 +237,10 @@
                     });
 
                     // Додавання обробників подій для кнопок видалення
-                    document.querySelectorAll(".delete-btn").forEach(button => {
+                    document.querySelectorAll(".delete-btn").forEach((button) => {
                         button.addEventListener("click", (e) => {
                             const factId = e.target.getAttribute("data-id");
-                            db.collection("facts").doc(factId).delete().catch(error => console.error("Помилка видалення:", error));
+                            deleteDoc(doc(db, "facts", factId)).catch(error => console.error("Помилка видалення:", error));
                         });
                     });
                 });
