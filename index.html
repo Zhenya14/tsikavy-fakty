@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Цікаві факти</title>
+    <title>Цікаві Факти</title>
     <style>
-        /* Загальні стилі */
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
             background-color: #f0f0f5;
             color: #333;
             text-align: center;
@@ -15,7 +14,6 @@
             padding: 0;
         }
 
-        /* Заголовок */
         h1 {
             background: linear-gradient(135deg, #007bff, #00d4ff);
             color: white;
@@ -25,20 +23,18 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        /* Форма для реєстрації та входу */
-        form {
+        #factForm {
             background: white;
-            padding: 15px;
+            padding: 20px;
             margin: 20px auto;
-            max-width: 400px;
+            max-width: 500px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
-            gap: 10px;
         }
 
-        input {
+        input, button {
             padding: 10px;
             border: 2px solid #007bff;
             border-radius: 5px;
@@ -48,10 +44,6 @@
         button {
             background: #007bff;
             color: white;
-            border: none;
-            padding: 10px 15px;
-            font-size: 16px;
-            border-radius: 5px;
             cursor: pointer;
             transition: 0.3s;
         }
@@ -60,7 +52,6 @@
             background: #0056b3;
         }
 
-        /* Список фактів */
         #factList {
             max-width: 600px;
             margin: 20px auto;
@@ -85,51 +76,95 @@
             color: #ff4d4d;
             font-size: 18px;
             cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .delete-btn:hover {
-            color: #cc0000;
-        }
-
-        /* Адаптивність */
-        @media (max-width: 500px) {
-            form {
-                flex-direction: column;
-            }
-
-            input {
-                width: 100%;
-            }
-
-            button {
-                width: 100%;
-            }
         }
     </style>
 </head>
 <body>
-    <h1>Цікаві факти</h1>
+    <h1>Цікаві Факти</h1>
 
-    <!-- Форма реєстрації -->
-    <div id="registerForm">
-        <h2>Реєстрація</h2>
-        <form id="registrationForm">
-            <input type="email" id="registerEmail" placeholder="Введіть email" required>
-            <input type="password" id="registerPassword" placeholder="Введіть пароль" required>
-            <button type="submit">Зареєструватися</button>
-        </form>
+    <div id="factForm">
+        <h2>Поділитися фактом</h2>
+        <input type="text" id="factInput" placeholder="Введіть цікавий факт..." required>
+        <button id="submitFact">Опублікувати</button>
     </div>
 
-    <!-- Форма входу -->
-    <div id="loginForm">
-        <h2>Вхід</h2>
-        <form id="loginFormInner">
-            <input type="email" id="loginEmail" placeholder="Введіть email" required>
-            <input type="password" id="loginPassword" placeholder="Введіть пароль" required>
-            <button type="submit">Увійти</button>
-        </form>
-    </div>
+    <div id="factList"></div>
 
-    <!-- Форма додавання фактів (з'являється після входу) -->
-    <form id="
+    <!-- Підключення Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, query, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        // Firebase конфігурація
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkPYP3bnDy61NFjRSboRZrfTVNTdIMWbY",
+            authDomain: "videovortex-235cd.firebaseapp.com",
+            databaseURL: "https://videovortex-235cd-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "videovortex-235cd",
+            storageBucket: "videovortex-235cd.appspot.com",
+            messagingSenderId: "681594250269",
+            appId: "1:681594250269:web:1176b21fcc8fe2a7d052f4"
+        };
+
+        // Ініціалізація Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Додавання факту
+        const submitFactButton = document.getElementById("submitFact");
+        const factInput = document.getElementById("factInput");
+        const factList = document.getElementById("factList");
+
+        submitFactButton.addEventListener("click", async () => {
+            const factText = factInput.value.trim();
+            if (factText) {
+                try {
+                    // Додаємо факт в Firestore
+                    await addDoc(collection(db, "facts"), {
+                        text: factText,
+                        timestamp: new Date()
+                    });
+                    factInput.value = ''; // Очищаємо поле після додавання
+                } catch (error) {
+                    console.error("Помилка при додаванні факту:", error.message);
+                }
+            }
+        });
+
+        // Завантаження фактів з Firestore
+        function loadFacts() {
+            const q = query(collection(db, "facts"), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snapshot) => {
+                factList.innerHTML = ''; // очищаємо список перед оновленням
+                snapshot.forEach((doc) => {
+                    const factData = doc.data();
+                    const factElement = document.createElement("div");
+                    factElement.classList.add("fact");
+                    factElement.innerHTML = `
+                        <p>${factData.text}</p>
+                        <button class="delete-btn" data-id="${doc.id}">&times;</button>
+                    `;
+                    factList.appendChild(factElement);
+                });
+
+                // Додаємо обробники подій для кнопок видалення
+                document.querySelectorAll(".delete-btn").forEach((button) => {
+                    button.addEventListener("click", async (e) => {
+                        const factId = e.target.getAttribute("data-id");
+                        try {
+                            // Видаляємо факт з Firestore
+                            await deleteDoc(doc(db, "facts", factId));
+                            console.log("Факт видалений");
+                        } catch (error) {
+                            console.error("Помилка при видаленні факту:", error.message);
+                        }
+                    });
+                });
+            });
+        }
+
+        // Завантажуємо факти після завантаження сторінки
+        loadFacts();
+    </script>
+</body>
+</html>
