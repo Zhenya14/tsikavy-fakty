@@ -214,9 +214,16 @@
                     addDoc(collection(db, "facts"), {
                         text: factText,
                         timestamp: new Date()
-                    }).then(() => {
+                    })
+                    .then(() => {
+                        console.log("Факт успішно додано!");
                         factInput.value = ""; // Очищаємо поле після додавання
-                    }).catch(error => console.error("Помилка:", error));
+                    })
+                    .catch(error => {
+                        console.error("Помилка при додаванні факту:", error);
+                    });
+                } else {
+                    console.log("Факт не додано. Поле порожнє.");
                 }
             });
 
