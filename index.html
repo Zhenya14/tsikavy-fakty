@@ -197,15 +197,21 @@
 
         // Відображення фактів
         function loadFacts() {
-            const q = query(collection(db, "facts"), orderBy("timestamp", "desc"));
-            onSnapshot(q, (snapshot) => {
-                factList.innerHTML = '';
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    factList.innerHTML += `<div class="fact"><p><strong>${data.user}:</strong> ${data.text}</p></div>`;
-                });
-            });
-        }
+    const q = query(collection(db, "facts"), orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+        factList.innerHTML = '';
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            factList.innerHTML += `
+                <div class="fact">
+                    <p><strong>${data.user || "Анонім"}:</strong> ${data.text}</p>
+                </div>`;
+        });
+    }, (error) => {
+        console.error("Помилка завантаження фактів:", error);
+    });
+}
 
         loadFacts();
     </script>
