@@ -23,21 +23,21 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        #factForm {
-            background: white;
-            padding: 20px;
+        .container {
+            max-width: 400px;
             margin: 20px auto;
-            max-width: 500px;
+            padding: 20px;
+            background: white;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
         }
 
         input, button {
             padding: 10px;
-            border: 2px solid #007bff;
+            margin: 5px 0;
+            width: 100%;
             border-radius: 5px;
+            border: 1px solid #007bff;
             font-size: 16px;
         }
 
@@ -52,9 +52,8 @@
             background: #0056b3;
         }
 
-        #factList {
-            max-width: 600px;
-            margin: 20px auto;
+        .hidden {
+            display: none;
         }
 
         .fact {
@@ -63,8 +62,8 @@
             margin: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            position: relative;
             text-align: left;
+            position: relative;
         }
 
         .delete-btn {
@@ -82,30 +81,34 @@
 <body>
     <h1>Цікаві Факти</h1>
 
-    <div id="auth">
-        <button id="login">Увійти</button>
-        <button id="logout" style="display: none;">Вийти</button>
+    <div class="container" id="authContainer">
+        <h2>Вхід / Реєстрація</h2>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Пароль" required>
+        <button id="registerBtn">Реєстрація</button>
+        <button id="loginBtn">Вхід</button>
+        <button id="googleLoginBtn">Увійти через Google</button>
+        <button id="logoutBtn" class="hidden">Вийти</button>
     </div>
 
-    <div id="factForm" style="display: none;">
-        <h2>Поділитися фактом</h2>
+    <div class="container hidden" id="factForm">
+        <h2>Додати факт</h2>
         <input type="text" id="factInput" placeholder="Введіть цікавий факт..." required>
         <button id="submitFact">Опублікувати</button>
     </div>
 
     <div id="factList"></div>
 
-    <!-- Підключення Firebase SDK -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, query, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
         // Firebase конфігурація
         const firebaseConfig = {
             apiKey: "AIzaSyBkPYP3bnDy61NFjRSboRZrfTVNTdIMWbY",
             authDomain: "videovortex-235cd.firebaseapp.com",
-            databaseURL: "https://videovortex-235cd-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "videovortex-235cd",
             storageBucket: "videovortex-235cd.appspot.com",
             messagingSenderId: "681594250269",
@@ -118,24 +121,50 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        const loginButton = document.getElementById("login");
-        const logoutButton = document.getElementById("logout");
+        // HTML-елементи
+        const emailInput = document.getElementById("email");
+        const passwordInput = document.getElementById("password");
+        const registerBtn = document.getElementById("registerBtn");
+        const loginBtn = document.getElementById("loginBtn");
+        const googleLoginBtn = document.getElementById("googleLoginBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
         const factForm = document.getElementById("factForm");
         const factInput = document.getElementById("factInput");
         const submitFactButton = document.getElementById("submitFact");
         const factList = document.getElementById("factList");
 
-        // Вхід через Google
-        loginButton.addEventListener("click", async () => {
+        // Реєстрація
+        registerBtn.addEventListener("click", async () => {
             try {
-                await signInWithPopup(auth, provider);
+                await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                console.log("Користувач зареєстрований");
+            } catch (error) {
+                console.error("Помилка реєстрації:", error.message);
+            }
+        });
+
+        // Вхід через email/пароль
+        loginBtn.addEventListener("click", async () => {
+            try {
+                await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                console.log("Користувач увійшов");
             } catch (error) {
                 console.error("Помилка входу:", error.message);
             }
         });
 
+        // Вхід через Google
+        googleLoginBtn.addEventListener("click", async () => {
+            try {
+                await signInWithPopup(auth, provider);
+                console.log("Успішний вхід через Google");
+            } catch (error) {
+                console.error("Помилка входу через Google:", error.message);
+            }
+        });
+
         // Вихід
-        logoutButton.addEventListener("click", async () => {
+        logoutBtn.addEventListener("click", async () => {
             try {
                 await signOut(auth);
             } catch (error) {
@@ -143,72 +172,41 @@
             }
         });
 
-        // Перевірка стану авторизації
+        // Стеження за статусом авторизації
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                console.log("Користувач увійшов:", user.displayName);
-                factForm.style.display = "block";
-                loginButton.style.display = "none";
-                logoutButton.style.display = "block";
+                factForm.classList.remove("hidden");
+                logoutBtn.classList.remove("hidden");
             } else {
-                console.log("Користувач вийшов");
-                factForm.style.display = "none";
-                loginButton.style.display = "block";
-                logoutButton.style.display = "none";
+                factForm.classList.add("hidden");
+                logoutBtn.classList.add("hidden");
             }
         });
 
-        // Додавання факту (тільки для авторизованих користувачів)
+        // Додавання факту
         submitFactButton.addEventListener("click", async () => {
-            const factText = factInput.value.trim();
-            if (factText && auth.currentUser) {
-                try {
-                    await addDoc(collection(db, "facts"), {
-                        text: factText,
-                        user: auth.currentUser.displayName,
-                        timestamp: new Date()
-                    });
-                    factInput.value = '';
-                } catch (error) {
-                    console.error("Помилка при додаванні факту:", error.message);
-                }
-            } else {
-                alert("Тільки авторизовані користувачі можуть додавати факти!");
+            if (factInput.value.trim() && auth.currentUser) {
+                await addDoc(collection(db, "facts"), {
+                    text: factInput.value.trim(),
+                    timestamp: new Date(),
+                    user: auth.currentUser.email
+                });
+                factInput.value = '';
             }
         });
 
-        // Завантаження фактів
+        // Відображення фактів
         function loadFacts() {
             const q = query(collection(db, "facts"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
-                factList.innerHTML = ''; // очищаємо список перед оновленням
+                factList.innerHTML = '';
                 snapshot.forEach((doc) => {
-                    const factData = doc.data();
-                    const factElement = document.createElement("div");
-                    factElement.classList.add("fact");
-                    factElement.innerHTML = `
-                        <p><strong>${factData.user || "Анонім"}:</strong> ${factData.text}</p>
-                        ${auth.currentUser ? `<button class="delete-btn" data-id="${doc.id}">&times;</button>` : ""}
-                    `;
-                    factList.appendChild(factElement);
-                });
-
-                // Додаємо обробники подій для кнопок видалення
-                document.querySelectorAll(".delete-btn").forEach((button) => {
-                    button.addEventListener("click", async (e) => {
-                        const factId = e.target.getAttribute("data-id");
-                        try {
-                            await deleteDoc(doc(db, "facts", factId));
-                            console.log("Факт видалений");
-                        } catch (error) {
-                            console.error("Помилка при видаленні факту:", error.message);
-                        }
-                    });
+                    const data = doc.data();
+                    factList.innerHTML += `<div class="fact"><p><strong>${data.user}:</strong> ${data.text}</p></div>`;
                 });
             });
         }
 
-        // Завантажуємо факти після завантаження сторінки
         loadFacts();
     </script>
 </body>
