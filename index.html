@@ -82,7 +82,12 @@
 <body>
     <h1>Цікаві Факти</h1>
 
-    <div id="factForm">
+    <div id="auth">
+        <button id="login">Увійти</button>
+        <button id="logout" style="display: none;">Вийти</button>
+    </div>
+
+    <div id="factForm" style="display: none;">
         <h2>Поділитися фактом</h2>
         <input type="text" id="factInput" placeholder="Введіть цікавий факт..." required>
         <button id="submitFact">Опублікувати</button>
@@ -93,6 +98,7 @@
     <!-- Підключення Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, query, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
         // Firebase конфігурація
@@ -109,29 +115,69 @@
         // Ініціалізація Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
 
-        // Додавання факту
-        const submitFactButton = document.getElementById("submitFact");
+        const loginButton = document.getElementById("login");
+        const logoutButton = document.getElementById("logout");
+        const factForm = document.getElementById("factForm");
         const factInput = document.getElementById("factInput");
+        const submitFactButton = document.getElementById("submitFact");
         const factList = document.getElementById("factList");
 
-        submitFactButton.addEventListener("click", async () => {
-            const factText = factInput.value.trim();
-            if (factText) {
-                try {
-                    // Додаємо факт в Firestore
-                    await addDoc(collection(db, "facts"), {
-                        text: factText,
-                        timestamp: new Date()
-                    });
-                    factInput.value = ''; // Очищаємо поле після додавання
-                } catch (error) {
-                    console.error("Помилка при додаванні факту:", error.message);
-                }
+        // Вхід через Google
+        loginButton.addEventListener("click", async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Помилка входу:", error.message);
             }
         });
 
-        // Завантаження фактів з Firestore
+        // Вихід
+        logoutButton.addEventListener("click", async () => {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Помилка виходу:", error.message);
+            }
+        });
+
+        // Перевірка стану авторизації
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("Користувач увійшов:", user.displayName);
+                factForm.style.display = "block";
+                loginButton.style.display = "none";
+                logoutButton.style.display = "block";
+            } else {
+                console.log("Користувач вийшов");
+                factForm.style.display = "none";
+                loginButton.style.display = "block";
+                logoutButton.style.display = "none";
+            }
+        });
+
+        // Додавання факту (тільки для авторизованих користувачів)
+        submitFactButton.addEventListener("click", async () => {
+            const factText = factInput.value.trim();
+            if (factText && auth.currentUser) {
+                try {
+                    await addDoc(collection(db, "facts"), {
+                        text: factText,
+                        user: auth.currentUser.displayName,
+                        timestamp: new Date()
+                    });
+                    factInput.value = '';
+                } catch (error) {
+                    console.error("Помилка при додаванні факту:", error.message);
+                }
+            } else {
+                alert("Тільки авторизовані користувачі можуть додавати факти!");
+            }
+        });
+
+        // Завантаження фактів
         function loadFacts() {
             const q = query(collection(db, "facts"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
@@ -141,8 +187,8 @@
                     const factElement = document.createElement("div");
                     factElement.classList.add("fact");
                     factElement.innerHTML = `
-                        <p>${factData.text}</p>
-                        <button class="delete-btn" data-id="${doc.id}">&times;</button>
+                        <p><strong>${factData.user || "Анонім"}:</strong> ${factData.text}</p>
+                        ${auth.currentUser ? `<button class="delete-btn" data-id="${doc.id}">&times;</button>` : ""}
                     `;
                     factList.appendChild(factElement);
                 });
@@ -152,7 +198,6 @@
                     button.addEventListener("click", async (e) => {
                         const factId = e.target.getAttribute("data-id");
                         try {
-                            // Видаляємо факт з Firestore
                             await deleteDoc(doc(db, "facts", factId));
                             console.log("Факт видалений");
                         } catch (error) {
